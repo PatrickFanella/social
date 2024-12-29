@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	"github.com/lib/pq"
 )
 
@@ -15,6 +16,7 @@ type Post struct {
 	Tags 	    []string	`json:"tags"`
 	CreatedAt string	  `json:"created_at"`
 	UpdatedAt string	  `json:"updated_at"`
+	Comments  []Comment `json:"comments"`
 }
 
 type PostStore struct {
@@ -71,4 +73,37 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 			return nil, err
 		}}
 		return &post, nil
+}
+
+func (s *PostStore) Delete(ctx context.Context, postID int64) error {
+	query := `DELETE FROM posts WHERE id = $1`
+
+	res, err := s.db.ExecContext(ctx, query, postID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostStore) Update(ctx context.Context, post *Post) error {
+	query :=`
+		UPDATE posts
+		SET title = $1, content = $2
+	`
+
+	_, err := s.db.ExecContext(ctx, query, post.Title, post.Content, post.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
